@@ -10,3 +10,5 @@ const bot = new Knub(process.env.TOKEN, {
 }, {
     guildConfigDir: path.resolve(__dirname, '..', 'data', 'guilds')
 });
+
+bot.run();

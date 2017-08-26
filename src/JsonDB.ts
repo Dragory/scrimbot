@@ -1,7 +1,7 @@
 import {promisify} from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
-import mkdirp from 'mkdirp';
+import * as mkdirp from 'mkdirp';
 
 const readFile = promisify(fs.readFile);
 const writeFile = promisify(fs.writeFile);
@@ -43,6 +43,7 @@ export class JsonDB {
         this.initPromise = new Promise((resolve, reject) => {
             mkdirp(path.dirname(this.path), err => {
                 if (err) return reject(err);
+                resolve();
             });
         });
 
@@ -56,8 +57,14 @@ export class JsonDB {
 
         this.loadPromise = new Promise(async (resolve, reject) => {
             await this.init();
-            const data = await readFile(this.path, {encoding: 'utf8'});
-            this.data = JSON.parse(data);
+
+            try {
+                this.data = JSON.parse(await readFile(this.path, {encoding: 'utf8'}));
+            } catch(e) {
+                this.data = this.def;
+            }
+
+            resolve();
         });
 
         return this.loadPromise;

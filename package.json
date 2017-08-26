@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -12,7 +13,11 @@
   "dependencies": {
     "@types/mkdirp": "^0.5.1",
     "@types/node": "^8.0.25",
-    "knub": "^1.0.1",
-    "mkdirp": "^0.5.1"
+    "ascii-table": "0.0.9",
+    "dotenv": "^4.0.0",
+    "knub": "^1.2.1",
+    "mkdirp": "^0.5.1",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.4.2"
   }
 }
