@@ -540,14 +540,15 @@ export class LobbyPlugin extends Plugin {
         // Clear old region roles
         const allRegionRoleIds = Object.values(regionRoles);
         const rolesToRemove = allRegionRoleIds
-            .filter(id => member.roles.has(id)) // Roles the member has
+            .filter(id => member.roles.has(id)) // Region roles the member has
             .filter(id => !rolesToAdd.includes(id)); // That weren't added above
 
         if (rolesToRemove.length) {
-            member.removeRoles(allRegionRoleIds);
+            member.removeRoles(rolesToRemove);
         }
 
         channel.send('Registration complete! You can now play in PUGs.');
         this.playerDB.save();
+        this.playerRegistrations.delete(user.id);
     }
 }
