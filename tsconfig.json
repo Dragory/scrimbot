@@ -3,6 +3,7 @@
 		"module": "commonjs",
 		"noImplicitAny": true,
 		"allowSyntheticDefaultImports": true,
+		"experimentalDecorators": true,
 		"target": "ES2017",
 		"lib": [
 			"es6",

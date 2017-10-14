@@ -72,36 +72,24 @@ export function balanceTeams(inputPlayers: IPlayer[], teamCount = 2): ITeam[] {
     // Distribute players to teams
     for (let i = 0; i < teamCount; i++) teams.push({players: [], averageSR: 0});
 
-    const playersByRole = players.reduce((map, player) => {
-        if (! map.has(player.assignedRole)) map.set(player.assignedRole, []);
-        map.get(player.assignedRole).push(player);
-        return map;
-    }, new Map());
+    let currentTeam = 0;
+    let inCurrentTeam = 0;
+    for (const player of players) {
+        teams[currentTeam].players.push(player);
 
-    const playersByRoleShuffled = Array.from(playersByRole);
-    shuffle(playersByRoleShuffled);
-
-    let currentTeam = Math.floor(Math.random() * teamCount);
-    for (const [role, rolePlayers] of playersByRoleShuffled) {
-        currentTeam = (currentTeam + 1 < teamCount ? currentTeam + 1 : 0);
-        let inCurrentTeam = 1;
-
-        for (const player of rolePlayers) {
-            teams[currentTeam].players.push(player);
-
-            // 1-2-...-2-1
-            inCurrentTeam++;
-            if (inCurrentTeam === 2) {
-                currentTeam += 1;
-                if (currentTeam >= teamCount) {
-                    currentTeam = 0;
-                }
-
-                inCurrentTeam = 0;
+        // 1-2-...-2-1
+        inCurrentTeam++;
+        if (inCurrentTeam === 2) {
+            currentTeam += 1;
+            if (currentTeam >= teamCount) {
+                currentTeam = 0;
             }
+
+            inCurrentTeam = 0;
         }
     }
 
+    // Sort players inside teams for a prettier output
     teams = teams.map(team => {
         team.players.sort((a, b) => {
             if (a.assignedRole > b.assignedRole) return 1;
