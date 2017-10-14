@@ -3,6 +3,7 @@ import {Plugin, command} from "knub";
 import {cmdPresets} from "../cmdPresets";
 import {reply} from "../util";
 import * as child_process from 'child_process';
+import {errorEmbed} from "knub/dist/utils";
 
 export class UtilityPlugin extends Plugin {
     getDefaultPermissions() {
@@ -31,7 +32,12 @@ export class UtilityPlugin extends Plugin {
             return;
         }
 
-        child_process.exec(updateCmd, {cwd: process.cwd()});
+        reply(msg, 'Updating...');
+
+        const updater = child_process.exec(updateCmd, {cwd: process.cwd()});
+        updater.stderr.on('data', data => {
+            console.error(data);
+        });
     }
 
     /**
