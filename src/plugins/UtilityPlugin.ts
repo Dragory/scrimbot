@@ -1,16 +1,17 @@
 import {Message} from "discord.js";
 import {Plugin, command} from "knub";
 import {cmdPresets} from "../cmdPresets";
+import {reply} from "../util";
 
-class UtilityPlugin extends Plugin {
+export class UtilityPlugin extends Plugin {
     getDefaultPermissions() {
-        return cmdPresets.admin.permissions;
+        return cmdPresets.mod.permissions;
     }
 
     /**
      * List roles and their IDs
      */
-    @command('roles', [], cmdPresets.admin)
+    @command('roles')
     async rolesCmd(msg: Message) {
         const lines = msg.guild.roles.map(role => `${role.id} - ${role.name}`);
         msg.channel.send(lines.join('\n'), {
@@ -21,7 +22,7 @@ class UtilityPlugin extends Plugin {
     /**
      * Restart & update
      */
-    @command(/^(?:update|restart)$/, [], cmdPresets.admin)
+    @command(/^(?:update|restart)$/, [])
     async updateCmd() {
         // TODO
     }
@@ -29,9 +30,9 @@ class UtilityPlugin extends Plugin {
     /**
      * Reload this guild's plugins/config
      */
-    @command('reload', [], cmdPresets.admin)
+    @command('reload')
     async reloadCmd(msg: Message) {
-        msg.reply('Reloading...');
+        reply(msg, 'Reloading...');
         this.parent.reloadGuild(this.guildId);
     }
 }

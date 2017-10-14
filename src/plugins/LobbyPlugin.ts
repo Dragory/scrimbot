@@ -6,13 +6,14 @@ import * as path from 'path';
 import {balanceTeams} from "../teamBalancer";
 
 import {IPlayer, ILobby} from "../interfaces";
-import {shuffle, trimLines} from "../util";
+import {shuffle, trimLines, reply} from "../util";
 import {cmdPresets} from "../cmdPresets";
+import {dataDir, paths} from "../paths";
 
 const AsciiTable: any = require('ascii-table');
 
-const lobbyFileDir = path.resolve(__dirname, '../data/lobbies');
-const playerFileDir = path.resolve(__dirname, '../data/players');
+const lobbyFileDir = dataDir('lobbies');
+const playerFileDir = dataDir('players');
 
 const allowedRoles = ['dps', 'tank', 'support', 'flex'];
 
@@ -41,7 +42,7 @@ export class LobbyPlugin extends Plugin {
         this.lobbyDB = new JsonDB(path.join(lobbyFileDir, `${this.guildId}.json`), []);
         this.lobbies = await this.lobbyDB.get();
 
-        this.playerDB = new JsonDB(path.join(playerFileDir, `${this.guildId}.json`));
+        this.playerDB = new JsonDB(path.join(playerFileDir, `${this.guildId}.json`), {});
         this.players = await this.playerDB.get();
 
         this.playerRegistrations = new Map();
@@ -50,20 +51,32 @@ export class LobbyPlugin extends Plugin {
     /**
      * Create a new lobby
      */
-    @command('createlobby', '<lobbyName:string>', cmdPresets.admin)
+    @command('createlobby', '<lobbyName:string>', cmdPresets.host)
     async createLobbyCmd(msg: Message, args: any) {
         const name = args.lobbyName;
 
         const hasExistingLobby = this.lobbies.some(lobby => lobby.name === name);
         if (hasExistingLobby) {
-            msg.reply('a lobby with that name already exists!');
+            reply(msg, 'A lobby with that name already exists!');
             return;
         }
 
+        const categoryId = await this.pluginConfig.get('vc_category_id');
+
+        const createVC = async (name: string) => {
+            // FIXME: Remove <any> cast once djs updates typings
+            const channel = await msg.guild.createChannel(name, 'voice', <any>{
+                bitrate: 96000,
+                parent: categoryId || undefined
+            });
+
+            return channel;
+        };
+
         const channels: (VoiceChannel | TextChannel)[] = [];
-        channels.push(await msg.guild.createChannel(`${name} - Lobby`, 'voice'));
-        channels.push(await msg.guild.createChannel(`${name} - Team 1`, 'voice'));
-        channels.push(await msg.guild.createChannel(`${name} - Team 2`, 'voice'));
+        channels.push(await createVC(`${name} - Lobby`));
+        channels.push(await createVC(`${name} - Team 1`));
+        channels.push(await createVC(`${name} - Team 2`));
 
         const lobby: ILobby = {
             owner: msg.author.id,
@@ -76,13 +89,13 @@ export class LobbyPlugin extends Plugin {
         this.lobbies.push(lobby);
         this.lobbyDB.save();
 
-        msg.reply(`lobby "${name}" created! Type \`!join ${name}\` to join`);
+        reply(msg, `Lobby "${name}" created! Type \`!join ${name}\` to join`);
     }
 
     /**
      * Close a previously created lobby
      */
-    @command('closelobby', '<lobbyName:string>', cmdPresets.admin)
+    @command('closelobby', '[lobbyName:string]', cmdPresets.host)
     async closeLobbyCmd(msg: Message, args: any) {
         let lobby;
 
@@ -91,10 +104,10 @@ export class LobbyPlugin extends Plugin {
         } else {
             // If there is just 1 open lobby, don't require specifying the lobby name
             if (this.lobbies.length === 0) {
-                msg.reply('there are no open lobbies to close!');
+                reply(msg, 'There are no open lobbies to close!');
                 return;
             } else if (this.lobbies.length > 0) {
-                msg.reply('there are more than 1 open lobby. Please specify which one to close.');
+                reply(msg, 'There are more than 1 open lobby. Please specify which one to close.');
                 return;
             }
 
@@ -102,12 +115,7 @@ export class LobbyPlugin extends Plugin {
         }
 
         if (!lobby) {
-            msg.reply('lobby not found!');
-            return;
-        }
-
-        if (lobby.owner !== msg.author.id) {
-            msg.reply('you can only close your own lobbies!');
+            reply(msg, 'Lobby not found!');
             return;
         }
 
@@ -121,13 +129,13 @@ export class LobbyPlugin extends Plugin {
         this.lobbies.splice(this.lobbies.indexOf(lobby), 1);
         this.lobbyDB.save();
 
-        msg.reply(`lobby "${lobby.name}" closed!`);
+        reply(msg, `lobby "${lobby.name}" closed!`);
     }
 
     /**
      * Join a lobby
      */
-    @command('join', '<lobbyName:string>')
+    @command('join', '[lobbyName:string]')
     async joinLobbyCmd(msg: Message, args: any) {
         let lobby;
 
@@ -136,10 +144,10 @@ export class LobbyPlugin extends Plugin {
         } else {
             // If there is just 1 open lobby, don't require specifying the lobby name
             if (this.lobbies.length === 0) {
-                msg.reply('there are no open lobbies to join!');
+                reply(msg, 'There are no open lobbies to join!');
                 return;
             } else if (this.lobbies.length > 0) {
-                msg.reply('there are more than 1 open lobby. Please specify which one to join.');
+                reply(msg, 'There are more than 1 open lobby. Please specify which one to join.');
                 return;
             }
 
@@ -147,12 +155,12 @@ export class LobbyPlugin extends Plugin {
         }
 
         if (!lobby) {
-            msg.reply('lobby not found!');
+            reply(msg, `That lobby isn't open right now!`);
             return;
         }
 
         if (lobby.players.includes(msg.author.id)) {
-            msg.reply(`you're already in that lobby!`);
+            reply(msg, `You're already in that lobby!`);
             return;
         }
 
@@ -162,7 +170,7 @@ export class LobbyPlugin extends Plugin {
         }
 
         this.joinLobby(lobby, msg.author);
-        msg.reply(`joined ${lobby.name}`);
+        reply(msg, `Joined ${lobby.name}`);
     }
 
     /**
@@ -173,18 +181,18 @@ export class LobbyPlugin extends Plugin {
         const lobby = this.lobbies.find(lobby => lobby.players.includes(msg.author.id));
 
         if (!lobby) {
-            msg.reply(`you're not in a lobby!`);
+            reply(msg, `You're not in a lobby!`);
             return;
         }
 
         this.leaveLobby(lobby, msg.author);
-        msg.reply(`left ${lobby.name}`);
+        reply(msg, `Left ${lobby.name}`);
     }
 
     /**
      * Remove a player from the specified lobby
      */
-    @command('lobbykick', '<user:User> [lobbyName:string]', cmdPresets.admin)
+    @command('lobbykick', '<user:User> [lobbyName:string]', cmdPresets.host)
     async kickCmd(msg: Message, args: any) {
         let lobby;
 
@@ -193,10 +201,10 @@ export class LobbyPlugin extends Plugin {
         } else {
             // If there is just 1 open lobby, don't require specifying the lobby name
             if (this.lobbies.length === 0) {
-                msg.reply('there are no open lobbies to kick from!');
+                reply(msg, 'There are no open lobbies to kick from!');
                 return;
             } else if (this.lobbies.length > 0) {
-                msg.reply('there are more than 1 open lobby. Please specify which one to kick the user from.');
+                reply(msg, 'There are more than 1 open lobby. Please specify which one to kick the user from.');
                 return;
             }
 
@@ -204,12 +212,12 @@ export class LobbyPlugin extends Plugin {
         }
 
         if (!lobby) {
-            msg.reply(`lobby not found!`);
+            reply(msg, `Lobby not found!`);
             return;
         }
 
         this.removeUserFromLobby(lobby, args.user);
-        msg.reply(`${args.user.username} has been kicked from the lobby!`);
+        reply(msg, `${args.user.username} has been kicked from the lobby!`);
     }
 
     /**
@@ -220,22 +228,22 @@ export class LobbyPlugin extends Plugin {
         const lobby = this.findLobbyByName(args.name);
 
         if (!lobby) {
-            msg.reply(`lobby not found!`);
+            reply(msg, `Lobby not found!`);
             return;
         }
 
         const members = lobby.players.map(id => msg.guild.members.get(id));
         const names = members.map(member => member.nickname || member.user.username);
 
-        msg.reply(`the lobby has ${lobby.players.length} players:\n${names.join(', ')}`);
+        reply(msg, `The lobby has ${lobby.players.length} players:\n${names.join(', ')}`);
     }
 
-    @command('balance', '<lobbyName:string>', cmdPresets.admin)
+    @command('balance', '<lobbyName:string>', cmdPresets.host)
     async balanceCmd(msg: Message, args: any) {
         const lobby = this.findLobbyByName(args.lobbyName);
 
         if (!lobby) {
-            msg.reply('lobby not found!');
+            reply(msg, 'Lobby not found!');
             return;
         }
 
@@ -244,7 +252,7 @@ export class LobbyPlugin extends Plugin {
             const members = unregisteredPlayers.map(id => msg.guild.members.get(id));
             const names = members.map(m => m ? m.nickname || m.user.username : '?');
 
-            msg.reply(`The following players are still completing their registration:\n${names.join(', ')}`);
+            reply(msg, `The following players are still completing their registration:\n${names.join(', ')}`);
             return;
         }
 
@@ -270,14 +278,70 @@ export class LobbyPlugin extends Plugin {
     /**
      * Registration
      */
-    @command('register', [])
+    @command('register')
     async registerCmd(msg: Message, args: any) {
+        let channel = msg.author.dmChannel;
+        if (!channel) {
+            channel = await msg.author.createDM();
+        }
+
         this.registrationStep(msg.author, null, true);
+    }
+
+    @command('autoregister', [], cmdPresets.admin)
+    async autoRegisterCmd(msg: Message, args: any) {
+        const registeredRole = await this.pluginConfig.get('registered_role');
+        if (! registeredRole) return;
+
+        reply(msg, 'Adding the Registered role to all previously registered users...');
+
+        const guild = this.bot.guilds.get(this.guildId);
+        const userIds = Object.keys(this.players);
+        let added = 0;
+
+        for (const userId of userIds) {
+            const member = guild.members.get(userId);
+            if (! member) continue;
+            if (member.roles.has(registeredRole)) continue;
+
+            await member.addRole(registeredRole);
+            added++;
+        }
+
+        reply(msg, `Added the role to ${added} members!`);
     }
 
     @onEvent('message', 'dm')
     async onDirectMessage(msg: Message) {
         this.registrationStep(msg.author, msg);
+    }
+
+    /**
+     * Player info
+     */
+    @command('player', '<user:User>', cmdPresets.host)
+    async player(msg: Message, args: {user: User}) {
+        const player = this.players[args.user.id];
+        if (!player) {
+            reply(msg, `Player hasn't registered yet!`);
+            return;
+        }
+
+        const tableValues = new Map();
+        tableValues.set('Discord', `${args.user.username}#${args.user.discriminator}`);
+        tableValues.set('BattleTag', player.battleTag);
+        tableValues.set('SR', player.sr);
+        tableValues.set('Voice', player.voice);
+
+        let pairs = Array.from(tableValues.entries());
+        const longestTitle = pairs.reduce((longest, pair) => Math.max(pair[0].length, longest), 0);
+        const tableRows = pairs.map(pair => {
+            const title = (<string>pair[0]).padStart(longestTitle, ' ');
+            return `${title}: ${pair[1]}`;
+        });
+
+        const message = '```' + tableRows.join('\n') + '```';
+        msg.channel.send(message);
     }
 
     protected findLobbyByName(name: string): ILobby {
@@ -315,26 +379,31 @@ export class LobbyPlugin extends Plugin {
             channel = await user.createDM();
         }
 
-        // If the message doesn't contain text, or only contains whitespace, ignore it
-        let content = msg.cleanContent;
-        if (content == null) return;
-
+        let content = (msg && msg.cleanContent ? msg.cleanContent : '');
         content = content.trim();
-        if (content === '') return;
 
-        const progress = this.playerRegistrations.get(msg.author.id);
+        const progress = this.playerRegistrations.get(user.id);
 
+        // No progress, not allowed to start a new registration -> ignore
         if (!progress && !allowStart) return;
+
+        // Progress, but no message to continue with -> ignore
+        if (progress && content === '') return;
+
+        const regionRoles = await this.pluginConfig.get('regions');
+        const validRegions = Object.keys(regionRoles);
 
         // Start registration
         if (!progress) {
+            const regionRolesCapitalized = validRegions.map(r => `**${r.toUpperCase()}**`);
+
             channel.send(trimLines(`
                 Before you can participate in PUGs, we need a little bit of information about you.
                 
                 To start off, which regions would you like to play in?
                 You will also get alerts for PUGs in the regions you choose.
                 
-                Available options: **EU**, **NA**, **OCE**, **None**
+                Available options: ${regionRolesCapitalized.join(', ')}, **None**
             `));
 
             this.playerRegistrations.set(user.id, new RegistrationProgress());
@@ -345,9 +414,6 @@ export class LobbyPlugin extends Plugin {
             if (content.toLowerCase() === 'none') {
                 progress.regions = [];
             } else {
-                const regionRoles = await this.pluginConfig.get('regions');
-                const validRegions = Object.keys(regionRoles);
-
                 let regions = content
                     .replace(/,/g, ' ')
                     .replace(/\sand\s/g, ' ')
@@ -356,42 +422,42 @@ export class LobbyPlugin extends Plugin {
 
                 regions = regions.filter(region => validRegions.includes(region));
                 if (regions.length === 0) {
-                    msg.reply('No valid regions specified! Please try again.');
+                    reply(msg, 'No valid regions specified! Please try again.');
                     return;
                 }
 
                 progress.regions = regions;
             }
 
-            msg.reply('Ok. And what is your BattleTag?');
+            reply(msg, 'Ok. And what is your BattleTag?');
         }
 
         // Ask for BattleTag
         else if (!progress.battleTag) {
             if (!content.match(/^[^#]+#[0-9]+$/)) {
-                msg.reply('Invalid BattleTag! Use the format Name#1234 (not that this is *not* your Discord username).');
+                reply(msg, 'Invalid BattleTag! Use the format Name#1234 (not that this is *not* your Discord username).');
                 return;
             }
 
             progress.battleTag = content;
-            msg.reply('Ok. What is your current SR? Reply `unranked` if unranked.');
+            reply(msg, 'Ok. What is your current SR? Reply `unranked` if unranked.');
         }
 
         // Ask for SR
         else if (progress.sr == null) {
             if (!content.match(/^[0-9]+$/) && content !== 'unranked') {
-                msg.reply('Invalid SR!');
+                reply(msg, 'Invalid SR!');
                 return;
             }
 
             const sr = (content === 'unranked' ? 0 : parseInt(content, 10));
             if (sr > 5000) {
-                msg.reply('Very funny.');
+                reply(msg, 'Very funny.');
                 return;
             }
 
             progress.sr = sr;
-            msg.reply(trimLines(`
+            reply(msg, trimLines(`
                 Ok. Which roles would you prefer to play?
                 Available options: **DPS**, **Tank**, **Support**
                 You can also reply **Flex** or **Any** if you're fine with any role.
@@ -406,7 +472,7 @@ export class LobbyPlugin extends Plugin {
 
             const invalidRole = roles.find(role => !allowedRoles.includes(role));
             if (invalidRole) {
-                msg.reply(`${invalidRole} is not a valid role`);
+                reply(msg, `${invalidRole} is not a valid role`);
                 return;
             }
 
@@ -416,7 +482,7 @@ export class LobbyPlugin extends Plugin {
 
             progress.roles = roles;
 
-            msg.reply('Ok. Finally, are you going to use voice chat while playing?');
+            reply(msg, 'Ok. Finally, are you going to use voice chat while playing?');
         }
 
         // Ask for voice status
@@ -455,15 +521,23 @@ export class LobbyPlugin extends Plugin {
         const guild = this.bot.guilds.get(this.guildId);
         const member = guild.members.get(user.id);
 
-        // Add region roles
-        progress.regions.forEach(region => {
-            if (!regionRoles[region]) return;
-            member.addRole(regionRoles[region]);
-        });
+        // Clear old region roles
+        const allRegionRoleIds = Object.values(regionRoles);
+        if (allRegionRoleIds.length) {
+            member.removeRoles(allRegionRoleIds);
+        }
 
-        // Add "Registered" role
+        // Add selected region roles
+        const rolesToAdd = progress.regions
+            .filter(r => !!regionRoles[r])
+            .map(r => regionRoles[r]);
+
         if (registeredRole) {
-            member.addRole(registeredRole);
+            rolesToAdd.push(registeredRole);
+        }
+
+        if (rolesToAdd.length > 0) {
+            await member.addRoles(rolesToAdd);
         }
 
         channel.send('Registration complete! You can now play in PUGs.');

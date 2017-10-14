@@ -11,5 +11,11 @@ export const cmdPresets: {[name: string]: ICommandOptions} = {
         permissions: {
             level: 50
         }
+    },
+
+    host: {
+        permissions: {
+            level: 25
+        }
     }
 };
