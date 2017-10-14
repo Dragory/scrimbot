@@ -522,27 +522,29 @@ export class LobbyPlugin extends Plugin {
         const guild = this.bot.guilds.get(this.guildId);
         const member = guild.members.get(user.id);
 
-        // Clear old region roles
-        const allRegionRoleIds = Object.values(regionRoles);
-        const rolesToRemove = allRegionRoleIds.filter(id => member.roles.has(id));
-
-        if (rolesToRemove.length) {
-            member.removeRoles(allRegionRoleIds);
-        }
-
         // Add selected region roles
         let rolesToAdd = progress.regions
             .filter(r => !!regionRoles[r])
             .map(r => regionRoles[r]);
 
-        if (registeredRole) {
+        rolesToAdd = rolesToAdd.filter(id => !member.roles.has(id));
+
+        if (registeredRole && !member.roles.has(registeredRole)) {
             rolesToAdd.push(registeredRole);
         }
 
-        rolesToAdd = rolesToAdd.filter(id => !member.roles.has(id));
-
         if (rolesToAdd.length > 0) {
             await member.addRoles(rolesToAdd);
+        }
+
+        // Clear old region roles
+        const allRegionRoleIds = Object.values(regionRoles);
+        const rolesToRemove = allRegionRoleIds
+            .filter(id => member.roles.has(id)) // Roles the member has
+            .filter(id => !rolesToAdd.includes(id)); // That weren't added above
+
+        if (rolesToRemove.length) {
+            member.removeRoles(allRegionRoleIds);
         }
 
         channel.send('Registration complete! You can now play in PUGs.');
