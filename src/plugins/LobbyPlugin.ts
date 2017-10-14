@@ -320,7 +320,7 @@ export class LobbyPlugin extends Plugin {
      * Player info
      */
     @command('player', '<user:User>', cmdPresets.host)
-    async player(msg: Message, args: {user: User}) {
+    async playerCmd(msg: Message, args: {user: User}) {
         const player = this.players[args.user.id];
         if (!player) {
             reply(msg, `Player hasn't registered yet!`);
