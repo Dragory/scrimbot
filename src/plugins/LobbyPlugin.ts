@@ -286,6 +286,7 @@ export class LobbyPlugin extends Plugin {
         }
 
         this.registrationStep(msg.author, null, true);
+        msg.delete();
     }
 
     @command('autoregister', [], cmdPresets.admin)
