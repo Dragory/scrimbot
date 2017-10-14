@@ -2,6 +2,7 @@ import {Message} from "discord.js";
 import {Plugin, command} from "knub";
 import {cmdPresets} from "../cmdPresets";
 import {reply} from "../util";
+import * as child_process from 'child_process';
 
 export class UtilityPlugin extends Plugin {
     getDefaultPermissions() {
@@ -23,8 +24,14 @@ export class UtilityPlugin extends Plugin {
      * Restart & update
      */
     @command(/^(?:update|restart)$/, [])
-    async updateCmd() {
-        // TODO
+    async updateCmd(msg: Message) {
+        const updateCmd = await this.pluginConfig.get('update_cmd');
+        if (!updateCmd) {
+            reply(msg, 'No update command specified!');
+            return;
+        }
+
+        child_process.exec(updateCmd, {cwd: process.cwd()});
     }
 
     /**
