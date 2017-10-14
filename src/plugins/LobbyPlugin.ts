@@ -523,18 +523,22 @@ export class LobbyPlugin extends Plugin {
 
         // Clear old region roles
         const allRegionRoleIds = Object.values(regionRoles);
-        if (allRegionRoleIds.length) {
+        const rolesToRemove = allRegionRoleIds.filter(id => member.roles.has(id));
+
+        if (rolesToRemove.length) {
             member.removeRoles(allRegionRoleIds);
         }
 
         // Add selected region roles
-        const rolesToAdd = progress.regions
+        let rolesToAdd = progress.regions
             .filter(r => !!regionRoles[r])
             .map(r => regionRoles[r]);
 
         if (registeredRole) {
             rolesToAdd.push(registeredRole);
         }
+
+        rolesToAdd = rolesToAdd.filter(id => !member.roles.has(id));
 
         if (rolesToAdd.length > 0) {
             await member.addRoles(rolesToAdd);
