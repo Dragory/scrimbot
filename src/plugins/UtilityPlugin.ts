@@ -24,7 +24,7 @@ export class UtilityPlugin extends Plugin {
     /**
      * Restart & update
      */
-    @command(/^(?:update|restart)$/, [])
+    @command(/(?:update|restart)/)
     async updateCmd(msg: Message) {
         const updateCmd = await this.pluginConfig.get('update_cmd');
         if (!updateCmd) {
