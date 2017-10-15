@@ -522,29 +522,28 @@ export class LobbyPlugin extends Plugin {
         const guild = this.bot.guilds.get(this.guildId);
         const member = guild.members.get(user.id);
 
-        // Add selected region roles
-        let rolesToAdd = progress.regions
-            .filter(r => !!regionRoles[r])
-            .map(r => regionRoles[r]);
+        // Remove any region roles that weren't selected above that the member has
+        const rolesToRemove = Object.keys(regionRoles)
+            .filter(roleName => !progress.regions.includes(roleName))
+            .map(name => regionRoles[name])
+            .filter(id => member.roles.has(id));
 
-        rolesToAdd = rolesToAdd.filter(id => !member.roles.has(id));
+        if (rolesToRemove.length) {
+            member.removeRoles(rolesToRemove, 'Registered: remove extra roles');
+        }
+
+        // Add selected region roles that the member doesn't have yet
+        let rolesToAdd = progress.regions
+            .map(r => regionRoles[r])
+            .filter(id => id != null)
+            .filter(id => !member.roles.has(id));
 
         if (registeredRole && !member.roles.has(registeredRole)) {
             rolesToAdd.push(registeredRole);
         }
 
         if (rolesToAdd.length > 0) {
-            await member.addRoles(rolesToAdd);
-        }
-
-        // Clear old region roles
-        const allRegionRoleIds = Object.values(regionRoles);
-        const rolesToRemove = allRegionRoleIds
-            .filter(id => member.roles.has(id)) // Region roles the member has
-            .filter(id => !rolesToAdd.includes(id)); // That weren't added above
-
-        if (rolesToRemove.length) {
-            member.removeRoles(rolesToRemove);
+            await member.addRoles(rolesToAdd, 'Registered: add roles');
         }
 
         channel.send('Registration complete! You can now play in PUGs.');
