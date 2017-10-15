@@ -105,7 +105,7 @@ export class LobbyPlugin extends Plugin {
             if (this.lobbies.length === 0) {
                 reply(msg, 'There are no open lobbies to close!');
                 return;
-            } else if (this.lobbies.length > 0) {
+            } else if (this.lobbies.length > 1) {
                 reply(msg, 'There are more than 1 open lobby. Please specify which one to close.');
                 return;
             }
@@ -136,6 +136,11 @@ export class LobbyPlugin extends Plugin {
      */
     @command('lobbylist')
     async listLobbiesCmd(msg: Message) {
+        if (this.lobbies.length === 0) {
+            msg.reply('No open lobbies!');
+            return;
+        }
+
         const lines = this.lobbies.map(lobby => {
             const ownerUser = this.bot.users.get(lobby.owner);
             return `${lobby.name} (${ownerUser.username}#${ownerUser.discriminator})`;
@@ -158,7 +163,7 @@ export class LobbyPlugin extends Plugin {
             if (this.lobbies.length === 0) {
                 reply(msg, 'There are no open lobbies to join!');
                 return;
-            } else if (this.lobbies.length > 0) {
+            } else if (this.lobbies.length > 1) {
                 reply(msg, 'There are more than 1 open lobby. Please specify which one to join.');
                 return;
             }
@@ -215,7 +220,7 @@ export class LobbyPlugin extends Plugin {
             if (this.lobbies.length === 0) {
                 reply(msg, 'There are no open lobbies to kick from!');
                 return;
-            } else if (this.lobbies.length > 0) {
+            } else if (this.lobbies.length > 1) {
                 reply(msg, 'There are more than 1 open lobby. Please specify which one to kick the user from.');
                 return;
             }
