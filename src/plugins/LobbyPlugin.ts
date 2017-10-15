@@ -74,9 +74,8 @@ export class LobbyPlugin extends Plugin {
         };
 
         const channels: (VoiceChannel | TextChannel)[] = [];
-        channels.push(await createVC(`${name} - Lobby`));
-        channels.push(await createVC(`${name} - Team 1`));
-        channels.push(await createVC(`${name} - Team 2`));
+        channels.push(await createVC(`${name} - 1`));
+        channels.push(await createVC(`${name} - 2`));
 
         const lobby: ILobby = {
             owner: msg.author.id,
@@ -89,7 +88,7 @@ export class LobbyPlugin extends Plugin {
         this.lobbies.push(lobby);
         this.lobbyDB.save();
 
-        reply(msg, `Lobby "${name}" created! Type \`!join ${name}\` to join`);
+        reply(msg, `Lobby "${name}" created! Command to join: \`!join ${name}\``);
     }
 
     /**
@@ -130,6 +129,19 @@ export class LobbyPlugin extends Plugin {
         this.lobbyDB.save();
 
         reply(msg, `lobby "${lobby.name}" closed!`);
+    }
+
+    /**
+     * List open lobbies
+     */
+    @command('lobbylist')
+    async listLobbiesCmd(msg: Message) {
+        const lines = this.lobbies.map(lobby => {
+            const ownerUser = this.bot.users.get(lobby.owner);
+            return `${lobby.name} (${ownerUser.username}#${ownerUser.discriminator})`;
+        });
+
+        msg.channel.send(lines.join('\n'));
     }
 
     /**
@@ -332,7 +344,7 @@ export class LobbyPlugin extends Plugin {
         tableValues.set('Discord', `${args.user.username}#${args.user.discriminator}`);
         tableValues.set('BattleTag', player.battleTag);
         tableValues.set('SR', player.sr);
-        tableValues.set('Voice', player.voice);
+        tableValues.set('Voice', player.voice ? 'yes' : 'no');
 
         let pairs = Array.from(tableValues.entries());
         const longestTitle = pairs.reduce((longest, pair) => Math.max(pair[0].length, longest), 0);
