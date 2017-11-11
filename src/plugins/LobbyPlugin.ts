@@ -242,7 +242,7 @@ export class LobbyPlugin extends Plugin {
      */
     @command('lobbyplayers', '<lobbyName:string>')
     async lobbyPlayersCmd(msg: Message, args: any) {
-        const lobby = this.findLobbyByName(args.name);
+        const lobby = this.findLobbyByName(args.lobbyName);
 
         if (!lobby) {
             reply(msg, `Lobby not found!`);
