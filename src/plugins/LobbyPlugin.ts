@@ -416,10 +416,10 @@ export class LobbyPlugin extends Plugin {
             const regionRolesCapitalized = validRegions.map(r => `**${r.toUpperCase()}**`);
 
             channel.send(trimLines(`
-                Before you can participate in PUGs, we need a little bit of information about you.
+                Hello! Before you can participate in in-house games, we need a little bit of information about you.
                 
                 To start off, which regions would you like to play in?
-                You will also get alerts for PUGs in the regions you choose.
+                You will also get alerts for games in the regions you choose.
                 
                 Available options: ${regionRolesCapitalized.join(', ')}, **None**
             `));
@@ -563,7 +563,7 @@ export class LobbyPlugin extends Plugin {
             await member.addRoles(rolesToAdd, 'Registered: add roles');
         }
 
-        channel.send('Registration complete! You can now play in PUGs.');
+        channel.send('Registration complete! You can now play in our in-house games!');
         this.playerDB.save();
         this.playerRegistrations.delete(user.id);
     }
