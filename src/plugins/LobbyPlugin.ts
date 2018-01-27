@@ -318,7 +318,7 @@ export class LobbyPlugin extends Plugin {
     @onEvent('message')
     async onMessageCreate(msg: Message) {
         if (!this.registrationChannel) return;
-        // if (await this.getMemberLevel(msg.member) > 0) return;
+        if (await this.getMemberLevel(msg.member) > 0) return;
 
         const prefix = await this.guildConfig.get('prefix');
         const regCommand = `${prefix}register`; // Not an ideal way to do this, could use CommandManager instead
