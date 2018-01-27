@@ -1,4 +1,4 @@
-import {Message, VoiceChannel, TextChannel, User} from 'discord.js';
+import {Message, VoiceChannel, TextChannel, User, Snowflake} from 'discord.js';
 import {Plugin, command, onEvent} from 'knub';
 import {JsonDB} from "../JsonDB"
 import * as path from 'path';
@@ -37,6 +37,7 @@ export class LobbyPlugin extends Plugin {
     protected players: PlayerMapObj;
 
     protected playerRegistrations: Map<string, RegistrationProgress>;
+    protected registrationChannel: Snowflake;
 
     async onLoad() {
         this.lobbyDB = new JsonDB(path.join(lobbyFileDir, `${this.guildId}.json`), []);
@@ -46,6 +47,8 @@ export class LobbyPlugin extends Plugin {
         this.players = await this.playerDB.get();
 
         this.playerRegistrations = new Map();
+
+        this.registrationChannel = await this.pluginConfig.get('registration_channel');
     }
 
     /**
@@ -297,6 +300,10 @@ export class LobbyPlugin extends Plugin {
      */
     @command('register')
     async registerCmd(msg: Message, args: any) {
+        if (this.registrationChannel && msg.channel.id !== this.registrationChannel) {
+            return;
+        }
+
         let channel = msg.author.dmChannel;
         if (!channel) {
             channel = await msg.author.createDM();
@@ -304,6 +311,21 @@ export class LobbyPlugin extends Plugin {
 
         this.registrationStep(msg.author, null, true);
         msg.delete();
+    }
+
+    // Remove non-register messages from the registration channel
+    // Doesn't apply to mods, admins, or hosts
+    @onEvent('message')
+    async onMessageCreate(msg: Message) {
+        if (!this.registrationChannel) return;
+        // if (await this.getMemberLevel(msg.member) > 0) return;
+
+        const prefix = await this.guildConfig.get('prefix');
+        const regCommand = `${prefix}register`; // Not an ideal way to do this, could use CommandManager instead
+
+        if (msg.channel.id === this.registrationChannel && msg.cleanContent !== regCommand) {
+            msg.delete();
+        }
     }
 
     @command('autoregister', [], cmdPresets.admin)
