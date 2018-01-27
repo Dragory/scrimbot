@@ -49,7 +49,6 @@ export class LobbyPlugin extends Plugin {
 
         this.playerRegistrations = new Map();
 
-        this.registrationChannel = await this.pluginConfig.get('registration_channel');
         this.commandChannel = await this.pluginConfig.get('command_channel');
     }
 
@@ -313,28 +312,11 @@ export class LobbyPlugin extends Plugin {
      * Registration
      */
     @command('register')
-    async registerCmd(msg: Message, args: any) {
-        if (this.registrationChannel && msg.channel.id !== this.registrationChannel) {
-            return;
-        }
+    async registerCmd(msg: Message) {
+        if (!this.isCommandChannel(msg.channel.id)) return;
 
         this.registrationStep(msg.author, null, true);
         msg.delete();
-    }
-
-    // Remove non-register messages from the registration channel
-    // Doesn't apply to mods, admins, or hosts
-    @onEvent('message')
-    async onMessageCreate(msg: Message) {
-        if (!this.registrationChannel) return;
-        if (await this.getMemberLevel(msg.member) > 0) return;
-
-        const prefix = await this.guildConfig.get('prefix');
-        const regCommand = `${prefix}register`; // Not an ideal way to do this, could use CommandManager instead
-
-        if (msg.channel.id === this.registrationChannel && msg.cleanContent !== regCommand) {
-            msg.delete();
-        }
     }
 
     @command('autoregister', [], cmdPresets.admin)
