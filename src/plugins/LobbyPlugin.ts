@@ -23,7 +23,7 @@ interface PlayerMapObj {
 
 class RegistrationProgress {
     public battleTag: string = null;
-    public regions: string[] = null;
+    public regions: string[] = [];
     public sr: number = null;
     public roles: string[] = null;
     public voice: boolean = null;
@@ -408,57 +408,26 @@ export class LobbyPlugin extends Plugin {
         // Progress, but no message to continue with -> ignore
         if (progress && content === '') return;
 
-        const regionRoles = await this.pluginConfig.get('regions');
-        const validRegions = Object.keys(regionRoles);
-
         // Start registration
         if (!progress) {
-            const regionRolesCapitalized = validRegions.map(r => `**${r.toUpperCase()}**`);
-
             channel.send(trimLines(`
                 Hello! Before you can participate in in-house games, we need a little bit of information about you.
                 
-                To start off, which regions would you like to play in?
-                You will also get alerts for games in the regions you choose.
-                
-                Available options: ${regionRolesCapitalized.join(', ')}, **None**
+                To start off, what is your BattleTag?
             `));
 
             this.playerRegistrations.set(user.id, new RegistrationProgress());
         }
 
-        // Ask for regions
-        else if (!progress.regions) {
-            if (content.toLowerCase() === 'none') {
-                progress.regions = [];
-            } else {
-                let regions = content
-                    .replace(/,/g, ' ')
-                    .replace(/\sand\s/g, ' ')
-                    .toLowerCase()
-                    .split(/\s+/g);
-
-                regions = regions.filter(region => validRegions.includes(region));
-                if (regions.length === 0) {
-                    reply(msg, 'No valid regions specified! Please try again.');
-                    return;
-                }
-
-                progress.regions = regions;
-            }
-
-            reply(msg, 'Ok. And what is your BattleTag?');
-        }
-
         // Ask for BattleTag
         else if (!progress.battleTag) {
             if (!content.match(/^[^#]+#[0-9]+$/)) {
-                reply(msg, 'Invalid BattleTag! Use the format Name#1234 (not that this is *not* your Discord username).');
+                reply(msg, 'Invalid BattleTag! Use the format Name#1234 (note that this is *not* your Discord username).');
                 return;
             }
 
             progress.battleTag = content;
-            reply(msg, 'Ok. What is your current SR? Reply `unranked` if unranked.');
+            reply(msg, 'Got it. And what is your current SR? Reply `unranked` if unranked.');
         }
 
         // Ask for SR
@@ -500,7 +469,7 @@ export class LobbyPlugin extends Plugin {
 
             progress.roles = roles;
 
-            reply(msg, 'Ok. Finally, are you going to use voice chat while playing?');
+            reply(msg, 'Alright. Finally, are you going to use voice chat while playing?');
         }
 
         // Ask for voice status
@@ -533,38 +502,9 @@ export class LobbyPlugin extends Plugin {
             voice: progress.voice
         };
 
-        const regionRoles = await this.pluginConfig.get('regions');
-        const registeredRole = await this.pluginConfig.get('registered_role');
-
-        const guild = this.bot.guilds.get(this.guildId);
-        const member = guild.members.get(user.id);
-
-        // Remove any region roles that weren't selected above that the member has
-        const rolesToRemove = Object.keys(regionRoles)
-            .filter(roleName => !progress.regions.includes(roleName))
-            .map(name => regionRoles[name])
-            .filter(id => member.roles.has(id));
-
-        if (rolesToRemove.length) {
-            member.removeRoles(rolesToRemove, 'Registered: remove extra roles');
-        }
-
-        // Add selected region roles that the member doesn't have yet
-        let rolesToAdd = progress.regions
-            .map(r => regionRoles[r])
-            .filter(id => id != null)
-            .filter(id => !member.roles.has(id));
-
-        if (registeredRole && !member.roles.has(registeredRole)) {
-            rolesToAdd.push(registeredRole);
-        }
-
-        if (rolesToAdd.length > 0) {
-            await member.addRoles(rolesToAdd, 'Registered: add roles');
-        }
-
-        channel.send('Registration complete! You can now play in our in-house games!');
         this.playerDB.save();
         this.playerRegistrations.delete(user.id);
+
+        channel.send('Registration complete! You can now play in our in-house games! If you want to change any of the details above, just type `!register` again.');
     }
 }
