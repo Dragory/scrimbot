@@ -37,7 +37,6 @@ export class LobbyPlugin extends Plugin {
     protected players: PlayerMapObj;
 
     protected playerRegistrations: Map<string, RegistrationProgress>;
-    protected registrationChannel: Snowflake;
     protected commandChannel: Snowflake;
 
     async onLoad() {
@@ -519,8 +518,8 @@ export class LobbyPlugin extends Plugin {
         this.playerRegistrations.delete(user.id);
 
         let registerHint;
-        if (this.registrationChannel) {
-            registerHint = `just post \`!register\` in <#${this.registrationChannel}>!'`;
+        if (this.commandChannel) {
+            registerHint = `just post \`!register\` in <#${this.commandChannel}>!'`;
         } else {
             registerHint = 'just post !register';
         }
