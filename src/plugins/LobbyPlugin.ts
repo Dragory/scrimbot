@@ -379,7 +379,7 @@ export class LobbyPlugin extends Plugin {
         const tableValues = new Map();
         tableValues.set('Discord', `${args.user.username}#${args.user.discriminator}`);
         tableValues.set('BattleTag', player.battleTag);
-        tableValues.set('SR', player.sr);
+        tableValues.set('SR', player.sr === 0 ? 'unranked' : player.sr);
         tableValues.set('Voice', player.voice ? 'yes' : 'no');
 
         let pairs = Array.from(tableValues.entries());
