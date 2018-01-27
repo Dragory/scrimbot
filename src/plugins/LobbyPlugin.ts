@@ -15,7 +15,7 @@ const AsciiTable: any = require('ascii-table');
 const lobbyFileDir = dataDir('lobbies');
 const playerFileDir = dataDir('players');
 
-const allowedRoles = ['dps', 'tank', 'support', 'flex'];
+const allowedRoles = ['dps', 'tank', 'support', 'flex', 'any'];
 
 interface PlayerMapObj {
     [id: string]: IPlayer;
@@ -38,6 +38,7 @@ export class LobbyPlugin extends Plugin {
 
     protected playerRegistrations: Map<string, RegistrationProgress>;
     protected registrationChannel: Snowflake;
+    protected commandChannel: Snowflake;
 
     async onLoad() {
         this.lobbyDB = new JsonDB(path.join(lobbyFileDir, `${this.guildId}.json`), []);
@@ -49,6 +50,11 @@ export class LobbyPlugin extends Plugin {
         this.playerRegistrations = new Map();
 
         this.registrationChannel = await this.pluginConfig.get('registration_channel');
+        this.commandChannel = await this.pluginConfig.get('command_channel');
+    }
+
+    isCommandChannel(channelId: Snowflake) {
+        return (!this.commandChannel || channelId === this.commandChannel);
     }
 
     /**
@@ -139,6 +145,8 @@ export class LobbyPlugin extends Plugin {
      */
     @command('lobbylist')
     async listLobbiesCmd(msg: Message) {
+        if (!this.isCommandChannel(msg.channel.id)) return;
+
         if (this.lobbies.length === 0) {
             msg.reply('No open lobbies!');
             return;
@@ -157,6 +165,8 @@ export class LobbyPlugin extends Plugin {
      */
     @command('join', '[lobbyName:string]')
     async joinLobbyCmd(msg: Message, args: any) {
+        if (!this.isCommandChannel(msg.channel.id)) return;
+
         let lobby;
 
         if (args.lobbyName) {
@@ -198,6 +208,8 @@ export class LobbyPlugin extends Plugin {
      */
     @command('leave', '[lobbyName:string]')
     async leaveLobbyCmd(msg: Message, args: any) {
+        if (!this.isCommandChannel(msg.channel.id)) return;
+
         const lobby = this.lobbies.find(lobby => lobby.players.includes(msg.author.id));
 
         if (!lobby) {
@@ -245,6 +257,8 @@ export class LobbyPlugin extends Plugin {
      */
     @command('lobbyplayers', '<lobbyName:string>')
     async lobbyPlayersCmd(msg: Message, args: any) {
+        if (!this.isCommandChannel(msg.channel.id)) return;
+
         const lobby = this.findLobbyByName(args.lobbyName);
 
         if (!lobby) {
@@ -302,11 +316,6 @@ export class LobbyPlugin extends Plugin {
     async registerCmd(msg: Message, args: any) {
         if (this.registrationChannel && msg.channel.id !== this.registrationChannel) {
             return;
-        }
-
-        let channel = msg.author.dmChannel;
-        if (!channel) {
-            channel = await msg.author.createDM();
         }
 
         this.registrationStep(msg.author, null, true);
@@ -527,6 +536,13 @@ export class LobbyPlugin extends Plugin {
         this.playerDB.save();
         this.playerRegistrations.delete(user.id);
 
-        channel.send('Registration complete! You can now play in our in-house games! If you want to change any of the details above, just type `!register` again.');
+        let registerHint;
+        if (this.registrationChannel) {
+            registerHint = `just post \`!register\` in <#${this.registrationChannel}>!'`;
+        } else {
+            registerHint = 'just post !register';
+        }
+
+        channel.send('Registration complete! You can now play in our in-house games! If you want to change any of the details above, ' + registerHint);
     }
 }

@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+process.on("unhandledRejection", (reason, p) => {
+    console.error(reason);
+    process.exit();
+});
+
 import * as path from 'path';
 import {Knub, Plugin, command} from 'knub';
 
